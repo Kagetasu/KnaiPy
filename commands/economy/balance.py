@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 async def balance(ctx: commands.Context, user: discord.User = commands.Author):
     db: "Database" = ctx.bot.db
 
-    bal = (await db.view_user(user.id))[0]
+    bal = await db.get_balance(user.id)
 
     embed = Embed(title=user.display_name)
     embed.set_thumbnail(url=user.display_avatar)

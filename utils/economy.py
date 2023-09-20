@@ -1,6 +1,6 @@
 import asqlite
 
-from typing import Literal
+from typing import Literal, Optional
 
 
 class Database:
@@ -51,18 +51,18 @@ class Database:
             await conn.execute("DELETE from ECONOMY where ID = ?;", (user_id,))
             await conn.commit()
 
-    async def view_user(self, user_id: int):
+    async def get_balance(self, user_id: int) -> float:
         async with asqlite.connect(self.database_file) as conn:
             query = await conn.execute(
                 """
-            SELECT balance, locked from ECONOMY 
+            SELECT balance from ECONOMY 
                 WHERE ID = ?
             """,
                 (user_id,),
             )
 
             user = await query.fetchone()
-            return user
+            return user[0]
 
     async def check_user(self, user_id: int):
         async with asqlite.connect(self.database_file) as conn:

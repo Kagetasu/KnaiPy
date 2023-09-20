@@ -19,7 +19,7 @@ async def give(ctx: commands.Context, user: discord.User, amnt: MoneyConverterTy
     await db.check_user(user.id)
     await db.update(user.id, "+", amnt)
 
-    balance = (await db.view_user(ctx.author.id))[0]
+    balance = db.get_balance(ctx.author.id)
 
     embed = Embed(
         color=0xE8BF56,

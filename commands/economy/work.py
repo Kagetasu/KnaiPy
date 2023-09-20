@@ -21,7 +21,7 @@ async def work(ctx: commands.Context):
     amnt = floor(uniform(0.3, 1) * 5000)
     await ctx.bot.db.update(ctx.author.id, "+", amnt)
 
-    balance = (await ctx.bot.db.view_user(ctx.author.id))[0]
+    balance = await ctx.bot.db.get_balance(ctx.author.id)
 
     embed = Embed(
         color=0xE8BF56,

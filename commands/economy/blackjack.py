@@ -141,7 +141,7 @@ class BlackJackView(ui.View):
         if self.player_deck.value > 21:
             await self.db.update(itx.user.id, "-", self.amnt)
 
-            balance = (await self.db.view_user(itx.user.id))[0]
+            balance = await self.db.get_balance(itx.user.id)
 
             embed = self.create_embed(
                 description="You **Busted**!",
@@ -159,7 +159,7 @@ class BlackJackView(ui.View):
             if self.opponent_deck.value == 21:
                 await self.db.update(itx.user.id, "-", self.amnt)
 
-                balance = (await self.db.view_user(itx.user.id))[0]
+                balance = await self.db.get_balance(itx.user.id)
 
                 embed = self.create_embed(
                     color=0x9C1A36,
@@ -170,8 +170,7 @@ class BlackJackView(ui.View):
                 winperc = uniform(0.4, 0.9) * 100 // 1
 
                 await self.db.update(itx.user.id, "+", winperc * self.amnt // 100)
-
-                balance = (await self.db.view_user(itx.user.id))[0]
+                balance = await self.db.get_balance(itx.user.id)
 
                 embed = self.create_embed(
                     color=0x32A852,
@@ -223,7 +222,7 @@ class BlackJackView(ui.View):
                 reveal_deck=True,
             )
 
-            balance = (await self.db.view_user(itx.user.id))[0]
+            balance = await self.db.get_balance(itx.user.id)
 
             embed.set_footer(text=f"Current balance: ${balance}")
 

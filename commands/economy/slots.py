@@ -75,7 +75,7 @@ async def slots(ctx: commands.Context, amnt: MoneyConverterType):
 
         await db.update(ctx.author.id, "-", amnt=amnt)
 
-    balance = (await db.view_user(ctx.author.id))[0]
+    balance = await db.get_balance(ctx.author.id)
     embed.set_footer(text=f"Current balance: ${balance}")
     await ctx.reply(embed=embed)
 
