@@ -1,0 +1,195 @@
+from discord.ext import commands
+from discord import ui, ButtonStyle, Interaction
+
+from random import choice, uniform
+
+from copy import deepcopy
+
+from utils import Embed, MoneyConverter
+
+from typing import Annotated
+
+from databases.economydb import update, lock, unlock, view
+
+
+class Card:
+    def __init__(self, suit: str, rank: str):
+        self.suit = suit
+        self.rank = rank
+        self.value = 0
+        self.print = f"`{suit}{rank}`"
+        if(rank in ('J', 'K', 'Q')):
+            self.value = 10
+        elif(rank == 'A'):
+            self.value = 11
+        else:
+            self.value = int(self.rank)
+
+
+suits = ['♠️', '♦️', '♣️', '♥️']
+ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'K', 'Q', 'A']
+mainDeck = []
+
+
+class Deck:
+    def __init__(self, cards: list[Card] = []):
+        self.cards = deepcopy(cards)
+        self.value = sum([card.value for card in cards])
+    
+    def draw(self, times: int = 1):
+        for i in range(times):
+            card: Card = choice(mainDeck)
+            mainDeck.remove(card)
+            self.cards.append(card)
+            if(card.rank == 'A' and (card.value + self.value > 21)):
+                self.value += 1
+            else:
+                self.value += card.value
+
+    def print(self):
+        return ' '.join([card.print for card in self.cards])
+            
+
+class bjView(ui.View):
+    def __init__(self, *args, ctx: commands.Context, playerDeck: Deck, dealerDeck: Deck, embed: Embed, amnt, **kwargs):
+        self.ctx = ctx
+        self.amnt = amnt
+        self.embed = embed
+        self.p = playerDeck
+        self.d = dealerDeck
+        super().__init__(*args, **kwargs)
+
+        h = ui.Button(
+            style=ButtonStyle.secondary,
+            label="HIT"
+        )
+        h.callback = self.hit
+
+        s = ui.Button(
+            style=ButtonStyle.secondary,
+            label="STAND"
+        )
+        s.callback = self.stand
+
+        self.add_item(h)
+        self.add_item(s)
+
+    async def hit(self, itx: Interaction):
+        self.p.draw()
+        self.embed.set_field_at(0, name=f"{self.ctx.author.display_name}'s deck:", value=f"Cards - {self.p.print()}\nTotal - `{self.p.value}`")
+
+        if(self.p.value > 21):
+            update(self.ctx.author.id, '-', self.amnt)
+            unlock(self.ctx.author.id, self.amnt)
+
+            self.embed.color = 0x9c1a36
+            self.embed.description = "**BUSTED!!** Lost all your money D:"
+            self.embed.set_field_at(1, name=f"Knai's deck:", value=f"Cards - {self.d.print()}\nTotal - `{self.d.value}`")
+            self.embed.set_footer(text=f"Current balance: ${view(self.ctx.author.id)[0]}")
+            await itx.response.edit_message(embed=self.embed, view=None)
+
+        elif(self.p.value == 21):
+
+            if(self.d.value == 21):
+                update(self.ctx.author.id, '-', self.amnt)
+                unlock(self.ctx.author.id, self.amnt)
+
+                self.embed.color = 0x9c1a36
+                self.embed.description = "Dealer has blackjack! You lost :p"
+            else:
+                winperc = uniform(0.4, 0.9)*100//1
+
+                update(self.ctx.author.id, '+', winperc * self.amnt // 100)
+                unlock(self.ctx.author.id, self.amnt)
+
+                self.embed.color = 0x32a852
+                self.embed.description = f"Congrats!! You got 21! You won **{winperc}%** of your bet!"
+
+            self.embed.set_field_at(1, name=f"Knai's deck:", value=f"Cards - {self.d.print()}\nTotal - `{self.d.value}`")
+            self.embed.set_footer(text=f"Current balance: ${view(self.ctx.author.id)[0]}")
+            await itx.response.edit_message(embed=self.embed, view=None)
+
+        else:
+            await itx.response.edit_message(embed=self.embed, view=self)
+
+
+
+    async def stand(self, itx: Interaction):
+        self.d.draw()
+        self.embed.set_field_at(0, name=f"{self.ctx.author.display_name}'s deck:", value=f"Cards - {self.p.print()}\nTotal - `{self.p.value}`")
+        self.embed.set_field_at(1, name=f"Knai's deck:", value=f"Cards - {self.d.print()}\nTotal - `{self.d.value}`")
+        winperc = uniform(0.4, 0.9)*100//1
+        if(self.d.value > 21):
+            update(self.ctx.author.id, '+', winperc * self.amnt // 100)
+
+            self.embed.color = 0x32a852
+            self.embed.description = f"Dealer **BUSTED!!** You won **{winperc}%** of your bet!"
+
+        if(self.p.value > self.d.value):
+            update(self.ctx.author.id, '+', winperc * self.amnt // 100)
+            
+            self.embed.color = 0x32a852
+            self.embed.description = f"You have more than the dealer! You won **{winperc}%** of your bet!"
+
+        elif(self.p.value < self.d.value):
+            update(self.ctx.author.id, '-', self.amnt)
+
+            self.embed.color = 0x9c1a36
+            self.embed.description = "Dealer has more than you. You lost :/"
+
+        else:
+            self.embed.color = 0xe8bf56
+            self.embed.description = f"And that's a tie! You both have {self.p.value}"
+
+        unlock(self.ctx.author.id, self.amnt)
+        self.embed.set_footer(text=f"Current balance: ${view(self.ctx.author.id)[0]}")
+        await itx.response.edit_message(embed=self.embed, view=None)
+
+
+@commands.is_owner()
+@commands.command(aliases = ['bj'])
+async def blackjack(ctx: commands.Context, amnt: Annotated[int, MoneyConverter]):
+
+    lock(ctx.author.id, amnt)
+
+    global mainDeck
+    mainDeck = []
+
+    for suit in suits:
+        for rank in ranks:
+            mainDeck.append(Card(suit=suit, rank=rank))
+
+    playerDeck = Deck()
+    playerDeck.draw(2)
+    
+    dealerDeck = Deck()
+    dealerDeck.draw(2)
+   
+    embed = Embed()
+    embed.set_author(name=f"{ctx.author.display_name}'s Blackjack")
+    embed.set_thumbnail(url=ctx.author.display_avatar)
+    embed.add_field(name=f"{ctx.author.display_name}'s deck:", value=f"Cards - {playerDeck.print()}\nTotal - `{playerDeck.value}`")
+    embed.add_field(name=f"Knai's deck:", value=f"Cards - {dealerDeck.cards[0].print} `?`\nTotal - `?`")
+
+    if(playerDeck.value == 21):
+        embed.set_field_at(0, name=f"{ctx.author.display_name}'s deck:", value=f"Cards - {playerDeck.print()}\nTotal - `{playerDeck.value}`")
+        embed.set_field_at(1, name=f"Knai's deck:", value=f"Cards - {dealerDeck.print()}\nTotal - `{dealerDeck.value}`")
+
+        view = None
+        if(dealerDeck == 21):
+            embed.color = 0xe8bf56
+            embed.description = f"And that's a tie! You both have {playerDeck.value}"
+        else:
+            embed.color = 0x32a852
+            embed.description = f"**BLACKJACK!!** You have 21!"
+            
+        unlock(ctx.author.id, amnt)
+    else:
+        view = bjView(ctx=ctx, playerDeck=playerDeck, dealerDeck=dealerDeck, embed=embed, amnt=amnt)
+    
+    await ctx.reply(embed=embed, view=view)
+
+    
+
+async def setup(bot: commands.Bot):
+    bot.add_command(blackjack)
