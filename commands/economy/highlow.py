@@ -1,86 +1,93 @@
+from typing import Literal
+from discord import ui, ButtonStyle
+import discord
 from discord.ext import commands
-from discord.ui import Button, View
-from discord import ButtonStyle, Interaction
 
 from utils import Embed
 
 from random import randrange, choice
 
-from databases.economydb import update
 
-
-
-class hlView(View):
-    def __init__(self, *args, ctx: commands.Context, result: str,num: int, **kwargs):
+class HighLowView(ui.View):
+    def __init__(
+        self,
+        *args,
+        ctx: commands.Context,
+        result: Literal["high", "low"],
+        num: int,
+        embed: Embed,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.result = result
         self.num = num
+        self.embed = embed
 
-        high = Button(
-            style=ButtonStyle.secondary,
-            emoji='⬆️',
-            custom_id='h',
-                      )
-        low = Button(
-            style=ButtonStyle.secondary,
-            emoji='⬇️',
-            custom_id='l'
-        )
-
-        high.callback = self.generic_callback(high)
-        low.callback = self.generic_callback(low)
-
-        self.add_item(high)
-        self.add_item(low)
-    
-    def generic_callback(self, button: Button):
-        async def callback(itx: Interaction):
-
-            for b in self.children:
-                b.disabled = True
-                if(b.custom_id != self.result):
-                    b.style = ButtonStyle.red
+    def disable_buttons(self) -> None:
+        for child in self.children:
+            if isinstance(child, ui.Button):
+                if child.emoji == self.result:
+                    child.style = ButtonStyle.green
                 else:
-                    b.style = ButtonStyle.green
+                    child.style = ButtonStyle.red
 
-            embed = itx.message.embeds[0]
+                child.disabled = True
 
-            if(button.custom_id == self.result):
-                win = randrange(1500, 3001)
-                embed.color=0x32a852
-                embed.description = f"Correct! You won **${win}**!"
-                update(self.ctx.author.id, '+', win)
-            else:
-                embed.color=0x9c1a36
-                embed.description = f"Incorrect!"
+    async def logic(
+        self,
+        itx: discord.Interaction,
+        answer: Literal["high", "low"],
+    ) -> None:
+        embed = self.embed  # alias
 
-            embed.description +=  f"\n\nThe number was `{self.num}`"
-            await itx.response.edit_message(embed=embed, view=self)
-        return callback
-        
+        if answer == self.result:
+            win = randrange(1500, 3001)
+            embed.color = 0x32A852
+            embed.description = f"Correct! You won **${win}**!"
+            await self.ctx.bot.db.update(self.ctx.author.id, "+", win)
+        else:
+            embed.color = 0x9C1A36
+            embed.description = f"Incorrect!"
+
+        embed.description += f"\n\nThe number was `{self.num}`"
+        await itx.response.edit_message(embed=embed, view=self)
+
+    @ui.button(emoji="⬆️", style=ButtonStyle.secondary)
+    async def high(self, itx: discord.Interaction, _: ui.Button):
+        await self.logic(itx, "high")
+
+    @ui.button(emoji="⬇️", style=ButtonStyle.secondary)
+    async def low(self, itx: discord.Interaction, _: ui.Button):
+        await self.logic(itx, "low")
 
 
-
-
-@commands.command(aliases= ['hl'])
+@commands.command(aliases=["hl"])
 async def highlow(ctx: commands.Context):
-    
-    num = randrange(5,100)
+    num = randrange(5, 100)
     rng = list(range(2, 101))
     rng.remove(num)
     hint = choice(rng)
-    result = ''
-    if(num > hint):
-        result = 'h'
+
+    if num > hint:
+        result = "high"
     else:
-        result = 'l'
+        result = "low"
+
     embed = Embed(
         title=f"{ctx.author.display_name}'s HighLow game:",
-        description=f"Your hint is `{hint}`. Is the number higher or lower?"
+        description=f"Your hint is `{hint}`. Is the number higher or lower?",
     )
-    await ctx.reply(embed=embed,view=hlView(ctx=ctx, result=result, num=num))
-    
+
+    await ctx.reply(
+        embed=embed,
+        view=HighLowView(
+            ctx=ctx,
+            result=result,
+            num=num,
+            embed=embed,
+        ),
+    )
 
 
 async def setup(bot):

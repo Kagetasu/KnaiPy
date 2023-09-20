@@ -1,21 +1,23 @@
-from discord.ext import commands
+import discord
 from discord import ui, ButtonStyle, Interaction
-
-from typing import Optional, TypedDict
+from discord.ext import commands
 
 from random import choice, uniform
 
+from typing import Optional, TypedDict, TYPE_CHECKING
+
 from utils import Embed, MoneyConverterType
 
-from databases.economydb import lock, unlock, update, view
+if TYPE_CHECKING:
+    from utils.economy import Database
 
+SUITS = ["♠️", "♦️", "♣️", "♥️"]
+RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "K", "Q", "A"]
 
-SUITS = ['♠️', '♦️', '♣️', '♥️']
-RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'K', 'Q', 'A']
 
 class Holder(TypedDict):
     name: str
-    user_id: str
+    user_id: int
     avatar_url: str
 
 
@@ -24,25 +26,25 @@ class Card:
         self.suit = suit
         self.rank = rank
 
-        if(rank in ('J', 'K', 'Q')):
+        if rank in ("J", "K", "Q"):
             self.value = 10
-        elif(rank == 'A'):
+        elif rank == "A":
             self.value = 11
         else:
             self.value = int(self.rank)
 
     def __str__(self):
         return f"`{self.suit}{self.rank}`"
-    
+
 
 class Deck:
     def __init__(
-            self,
-            *,
-            holder: Optional[Holder] = None,
-            mainDeck: list[str]
+        self,
+        *,
+        holder: Optional[Holder] = None,
+        main_deck: list[Card],
     ):
-        self.mainDeck = mainDeck
+        self.main_deck = main_deck
         self.cards: list[Card] = []
         self.value = 0
         self.holder = holder or {
@@ -50,52 +52,55 @@ class Deck:
             "user_id": 0,
             "avatar_url": "...",
         }
-    
-    def __str__(self):
-        return ' '.join([f"{card}" for card in self.cards])
 
+    def __str__(self):
+        return " ".join([f"{card}" for card in self.cards])
 
     def draw(self, times: int = 1):
         for _ in range(times):
-            card = choice(self.mainDeck)
+            card = choice(self.main_deck)
 
-            if(card.rank == "A") and (card.value + self.value > 21):
+            if (card.rank == "A") and (card.value + self.value > 21):
                 self.value += 1
             else:
                 self.value += card.value
 
             self.cards.append(card)
-            self.mainDeck.remove(card)
+            self.main_deck.remove(card)
+
 
 class BlackJackView(ui.View):
     def __init__(
-            self,
-            *args,
-            mainDeck: list[Card],
-            player_deck: Deck,
-            amnt: int,
-            **kwargs
+        self,
+        *args,
+        main_deck: list[Card],
+        player_deck: Deck,
+        amnt: int,
+        db: "Database",
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.mainDeck = mainDeck
+        self.main_deck = main_deck
         self.amnt = amnt
         self.player_deck = player_deck
-        
-        self.opponent_deck = Deck(mainDeck=mainDeck)
+        self.db = db
+        self.message: Optional[discord.Message] = None
+
+        self.opponent_deck = Deck(main_deck=main_deck)
 
         self.player_deck.draw(2)
         self.opponent_deck.draw(2)
 
     def create_embed(
-            self,
-            *,
-            footer: Optional[str] = None,
-            reveal_deck: bool = False,
-            **kwargs,
+        self,
+        *,
+        footer: Optional[str] = None,
+        reveal_deck: bool = False,
+        **kwargs,
     ):
         embed = Embed(**kwargs)
         embed.title = f"{self.player_deck.holder['name']}'s BlackJack"
-        embed.set_thumbnail(url=self.player_deck.holder['avatar_url'])
+        embed.set_thumbnail(url=self.player_deck.holder["avatar_url"])
         embed.set_footer(text=footer)
 
         embed.add_field(
@@ -103,7 +108,7 @@ class BlackJackView(ui.View):
             value=f"Cards - {self.player_deck}\nTotal - `{self.player_deck.value}`",
         )
 
-        if(reveal_deck):
+        if reveal_deck:
             embed.add_field(
                 name=f"{self.opponent_deck.holder['name']}'s deck",
                 value=f"Cards - {self.opponent_deck}\nTotal - `{self.opponent_deck.value}`",
@@ -115,33 +120,33 @@ class BlackJackView(ui.View):
             )
 
         return embed
-    
+
     async def interaction_check(self, itx: Interaction) -> bool:
-        if(self.player_deck.holder['user_id'] == itx.user.id):
+        if self.player_deck.holder["user_id"] == itx.user.id:
             return True
         return False
-    
+
     async def on_timeout(self) -> None:
         for child in self.children:
-            if(isinstance(child, ui.Button)):
+            if isinstance(child, ui.Button):
                 child.disabled = True
-        embed = self.create_embed(
-            color = 0x9C1A36,
-            description = "Game timed out."
-        )
-        
+
+        if self.message:
+            embed = self.create_embed(color=0x9C1A36, description="Game timed out.")
+            await self.message.edit(embed=embed, view=self)
 
     @ui.button(label="HIT", style=ButtonStyle.secondary)
     async def hit(self, itx: Interaction, _: ui.Button["BlackJackView"]):
         self.player_deck.draw()
         if self.player_deck.value > 21:
-            update(itx.user.id, "-", self.amnt)
-            unlock(itx.user.id, self.amnt)
+            await self.db.update(itx.user.id, "-", self.amnt)
+
+            balance = (await self.db.view_user(itx.user.id))[0]
 
             embed = self.create_embed(
                 description="You **Busted**!",
                 color=0x9C1A36,
-                footer=f"Current balance: ${view(itx.user.id)[0]}",
+                footer=f"Current balance: ${balance}",
                 reveal_deck=True,
             )
             await itx.response.edit_message(
@@ -152,24 +157,26 @@ class BlackJackView(ui.View):
 
         elif self.player_deck.value == 21:
             if self.opponent_deck.value == 21:
-                update(itx.user.id, "-", self.amnt)
-                unlock(itx.user.id, self.amnt)
+                await self.db.update(itx.user.id, "-", self.amnt)
+
+                balance = (await self.db.view_user(itx.user.id))[0]
 
                 embed = self.create_embed(
                     color=0x9C1A36,
                     description="Busted! Dealer has blackjack.",
-                    footer=f"Current balance: ${view(itx.user.id)[0]}",
+                    footer=f"Current balance: ${balance}",
                 )
             else:
                 winperc = uniform(0.4, 0.9) * 100 // 1
 
-                update(itx.user.id, "+", winperc * self.amnt // 100)
-                unlock(itx.user.id, self.amnt)
+                await self.db.update(itx.user.id, "+", winperc * self.amnt // 100)
+
+                balance = (await self.db.view_user(itx.user.id))[0]
 
                 embed = self.create_embed(
                     color=0x32A852,
                     description="Congrats! You won **{winperc}%** of your bet.",
-                    footer=f"Current balance: ${view(itx.user.id)[0]}",
+                    footer=f"Current balance: ${balance}",
                 )
 
             await itx.response.edit_message(embed=embed, view=None)
@@ -185,7 +192,7 @@ class BlackJackView(ui.View):
 
         winperc = uniform(0.4, 0.9) * 100 // 1
         if self.opponent_deck.value > 21:
-            update(itx.user.id, "+", winperc * self.amnt // 100)
+            await self.db.update(itx.user.id, "+", winperc * self.amnt // 100)
 
             embed = self.create_embed(
                 color=0x9C1A36,
@@ -194,7 +201,7 @@ class BlackJackView(ui.View):
             )
 
         if self.player_deck.value > self.opponent_deck.value:
-            update(itx.user.id, "+", winperc * self.amnt // 100)
+            await self.db.update(itx.user.id, "+", winperc * self.amnt // 100)
 
             embed = self.create_embed(
                 color=0x32A852,
@@ -202,7 +209,7 @@ class BlackJackView(ui.View):
                 reveal_deck=True,
             )
         elif self.player_deck.value < self.opponent_deck.value:
-            update(itx.user.id, "-", self.amnt)
+            await self.db.update(itx.user.id, "-", self.amnt)
 
             embed = self.create_embed(
                 color=0x9C1A36,
@@ -216,47 +223,49 @@ class BlackJackView(ui.View):
                 reveal_deck=True,
             )
 
-            unlock(itx.user.id, self.amnt)
-            embed.set_footer(text=f"Current balance: ${view(itx.user.id)[0]}")
+            balance = (await self.db.view_user(itx.user.id))[0]
+
+            embed.set_footer(text=f"Current balance: ${balance}")
+
         await itx.response.edit_message(
             embed=embed,
             view=None,
         )
-
         self.stop()
 
 
-@commands.is_owner()
-@commands.command(aliases = ['bj'])
+@commands.command(aliases=["bj"])
 async def blackjack(ctx: commands.Context, amnt: MoneyConverterType):
+    db: "Database" = ctx.bot.db
 
-    mainDeck = []
+    await db.update(ctx.author.id, "-", amnt=amnt)  # hold the money hostage
+
+    main_deck = []
 
     for suit in SUITS:
         for rank in RANKS:
-            mainDeck.append(Card(suit=suit, rank=rank))
-    
-    lock(ctx.author.id, amnt)
+            main_deck.append(Card(suit=suit, rank=rank))
 
     view = BlackJackView(
-        mainDeck=mainDeck,
+        main_deck=main_deck,
         player_deck=Deck(
-            mainDeck=mainDeck,
+            main_deck=main_deck,
             holder={
                 "name": ctx.author.display_name,
                 "user_id": ctx.author.id,
                 "avatar_url": ctx.author.display_avatar.url,
-            }
+            },
         ),
         amnt=amnt,
+        db=db,
     )
 
     embed = view.create_embed(
-        reveal_deck=False, 
+        reveal_deck=False,
     )
 
     if view.player_deck.value >= 21 or view.opponent_deck.value >= 21:
-        if view.player_deck.value > 21:  
+        if view.player_deck.value > 21:
             if view.opponent_deck.value > 21:
                 embed.color = 0x9C1A36
                 embed.description = "You both **Bust**!"
@@ -274,15 +283,17 @@ async def blackjack(ctx: commands.Context, amnt: MoneyConverterType):
             embed.description = f"**BLACKJACK!!** You have 21!"
         else:
             print(
-                f"Unreachable player value: {view.player_deck.value}, dealer: {view.opponent_deck.value}" 
+                f"Unreachable player value: {view.player_deck.value}, dealer: {view.opponent_deck.value}"
             )
 
         view.stop()
         view = None
 
-    await ctx.reply(embed=embed, view=view)
+    view.message = await ctx.reply(  # type: ignore
+        embed=embed,
+        view=view,
+    )
 
-    
 
 async def setup(bot: commands.Bot):
     bot.add_command(blackjack)

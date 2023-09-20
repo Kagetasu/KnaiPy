@@ -1,40 +1,38 @@
 from discord.ext import commands
-from discord import ui, Embed, ButtonStyle, Interaction
+from discord import ui, ButtonStyle, Interaction
 
-
+from utils import Embed
 
 buttons = [
     ["(", ")", "C", "/"],
     ["7", "8", "9", "x"],
     ["4", "5", "6", "-"],
     ["1", "2", "3", "+"],
-    ["ESC", "0", ".", "="]
+    ["ESC", "0", ".", "="],
 ]
 
-equation = " "
-embed = Embed(title="Calculator", description=f"```{equation}```", color=0x8662bd)
 
 class Calculator(ui.View):
-    def __init__(self, *args, ctx:commands.Context, **kwargs):
+    def __init__(self, *args, ctx: commands.Context, embed: Embed, **kwargs):
         super().__init__(*args, **kwargs)
         self.ctx = ctx
 
+        self.equation = " "
+        self.embed = embed
+
         for i, row in enumerate(buttons):
             for e in row:
-                b = ui.Button(
-                    label=e,
-                    row=i
-                )
-                if("0" <= e <= "9") or (e == "."):
+                b = ui.Button(label=e, row=i)
+                if ("0" <= e <= "9") or (e == "."):
                     b.style = ButtonStyle.blurple
                     b.callback = self.generic_callback(b)
-                elif(e == "="):
+                elif e == "=":
                     b.style = ButtonStyle.green
                     b.callback = self.eq_callback
-                elif(e == "ESC"):
+                elif e == "ESC":
                     b.style = ButtonStyle.red
                     b.callback = self.esc_callback
-                elif(e == "C"):
+                elif e == "C":
                     b.callback = self.c_callback
                 else:
                     b.callback = self.generic_callback(b)
@@ -42,42 +40,50 @@ class Calculator(ui.View):
 
     def generic_callback(self, btn: ui.Button):
         async def actual_callback(interaction: Interaction):
-            global equation
-            equation += btn.label
-            embed.description = f"```{equation}```"
-            await interaction.response.edit_message(embed=embed)
+            self.equation += btn.label  # type: ignore
+            self.embed.description = f"```\n{self.equation}```"
+            await interaction.response.edit_message(embed=self.embed)
+
         return actual_callback
-        
+
     async def c_callback(self, interaction: Interaction):
-        global equation
-        equation = " "
-        embed.description = f"```{equation}```"
-        await interaction.response.edit_message(embed=embed, view=self)
-        
+        self.equation = " "
+        self.embed.description = f"```\n{self.equation}```"
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
     async def esc_callback(self, interaction: Interaction):
-        embed.description = "```Cancelled...```"
-        await interaction.response.edit_message(embed=embed, view=None)
+        self.embed.description = "```\nCancelled...```"
+        await interaction.response.edit_message(embed=self.embed, view=None)
 
     async def eq_callback(self, interaction: Interaction):
         try:
-            embed.description = f"```{eval(equation)}```"
-            embed.color = 0x32a852
+            self.embed.description = f"```\n{eval(self.equation)}```"
+            self.embed.color = 0x32A852
         except:
-            embed.description = f"```Invalid syntax...```"
-            embed.color = 0x9c1a36
-        await interaction.response.edit_message(embed=embed, view=None)
+            self.embed.description = f"```Invalid syntax...```"
+            self.embed.color = 0x9C1A36
+        await interaction.response.edit_message(embed=self.embed, view=None)
 
     async def interaction_check(self, interaction: Interaction):
-        if(interaction.user == self.ctx.author):
+        if interaction.user == self.ctx.author:
             return True
-        else:
-            return False
 
-    
+        await interaction.response.send_message("Not your calculator!", ephemeral=True)
 
-@commands.command(aliases = ['calc'])
+
+@commands.command(aliases=["calc"])
 async def calculator(ctx):
-    await ctx.send(embed=embed, view=Calculator(ctx=ctx))
+    embed = Embed(
+        title="Calculator",
+        description=f"```\n```",
+        color=0x8662BD,
+    )
+
+    await ctx.send(
+        embed=embed,
+        view=Calculator(ctx=ctx, embed=embed),
+    )
+
 
 async def setup(bot):
     bot.add_command(calculator)
