@@ -19,6 +19,7 @@ bot = commands.Bot(
 @bot.event
 async def setup_hook():
     bot.db = Database()  # type: ignore
+    await bot.db.create_tables()  # type: ignore
 
     CMDS_FOLDER = Path("./commands")
     for cmd in CMDS_FOLDER.glob("**/[!_]*.py"):
