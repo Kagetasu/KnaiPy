@@ -1,10 +1,9 @@
 from discord.ext import commands
-from discord import Embed
 
 from random import choices, uniform
 from math import floor
 
-from utils import MoneyConverterType
+from utils import Embed, MoneyConverterType
 
 from typing import TYPE_CHECKING
 

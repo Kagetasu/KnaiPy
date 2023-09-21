@@ -1,6 +1,6 @@
 from discord.ext import commands
-from random import random, uniform
 
+from random import random, uniform
 from math import floor
 
 from utils import MoneyConverterType

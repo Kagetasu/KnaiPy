@@ -1,11 +1,12 @@
-from typing import Literal
-from discord import ui, ButtonStyle
 import discord
+from discord import ui, ButtonStyle
 from discord.ext import commands
+
+from random import randrange, choice
 
 from utils import Embed
 
-from random import randrange, choice
+from typing import Literal
 
 
 class HighLowView(ui.View):

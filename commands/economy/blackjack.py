@@ -1,12 +1,11 @@
-import discord
-from discord import ui, ButtonStyle, Interaction
+from discord import ui, Interaction, ButtonStyle, Message
 from discord.ext import commands
 
 from random import choice, uniform
 
-from typing import Optional, TypedDict, TYPE_CHECKING
-
 from utils import Embed, MoneyConverterType
+
+from typing import Optional, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.economy import Database
@@ -84,7 +83,7 @@ class BlackJackView(ui.View):
         self.amnt = amnt
         self.player_deck = player_deck
         self.db = db
-        self.message: Optional[discord.Message] = None
+        self.message: Optional[Message] = None
 
         self.opponent_deck = Deck(main_deck=main_deck)
 
