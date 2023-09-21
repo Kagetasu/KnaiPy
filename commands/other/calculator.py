@@ -62,6 +62,7 @@ class Calculator(ui.View):
         except:
             self.embed.description = f"```Invalid syntax...```"
             self.embed.color = 0x9C1A36
+
         await interaction.response.edit_message(embed=self.embed, view=None)
 
     async def interaction_check(self, interaction: Interaction):
