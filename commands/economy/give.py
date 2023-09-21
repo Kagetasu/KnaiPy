@@ -3,14 +3,18 @@ from discord.ext import commands
 
 from utils import Embed, MoneyConverterType
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from utils.economy import Database
 
 
 @commands.command()
-async def give(ctx: commands.Context, user: discord.User, amnt: MoneyConverterType):
+async def give(
+    ctx: commands.Context,
+    user: Union[discord.Member, discord.User],
+    amnt: MoneyConverterType,
+):
     if user.id == ctx.author.id:
         return await ctx.reply(f"Can't give money to yourself!")
 

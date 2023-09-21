@@ -3,14 +3,17 @@ from discord.ext import commands
 
 from utils import Embed
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from utils.economy import Database
 
 
 @commands.command(aliases=["bal"])
-async def balance(ctx: commands.Context, user: discord.User = commands.Author):
+async def balance(
+    ctx: commands.Context,
+    user: Union[discord.Member, discord.User] = commands.Author,
+) -> None:
     db: "Database" = ctx.bot.db
 
     bal = await db.get_balance(user.id)
