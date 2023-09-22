@@ -1,6 +1,6 @@
 import asqlite
 
-from typing import Literal, Optional
+from typing import Literal
 
 
 class Database:
@@ -30,7 +30,7 @@ class Database:
         self,
         user_id: int,
         mode: Literal["set", "+", "-"],
-        amnt: float,
+        amnt: int,
     ):
         async with asqlite.connect(self.database_file) as conn:
             if mode == "set":
@@ -51,7 +51,7 @@ class Database:
             await conn.execute("DELETE from ECONOMY where ID = ?;", (user_id,))
             await conn.commit()
 
-    async def get_balance(self, user_id: int) -> float:
+    async def get_balance(self, user_id: int) -> int:
         async with asqlite.connect(self.database_file) as conn:
             query = await conn.execute(
                 """
