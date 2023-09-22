@@ -24,6 +24,7 @@ async def work(ctx: commands.Context):
     balance = await ctx.bot.db.get_balance(ctx.author.id)
 
     embed = Embed(
+        color=0xE8BF56,
         title=f"{ctx.author.display_name}'s Transaction:",
         description=f"**Pay:** ${amnt}\n\n**Worked as:** {job}",
     )
