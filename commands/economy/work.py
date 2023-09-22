@@ -5,13 +5,11 @@ from math import floor
 
 from utils import Embed
 
-# fmt: off
 jobs = ["Barber", "IT guy", "Plumber", "Dancer", "Pharmacist", "Cashier", "Teacher",
         "Chef", "Electrician", "Mechanic", "Graphic Designer", "Nurse", "Architect", 
         "Lawyer", "Web Developer", "Accountant", "Delivery Driver", "Gardener", 
         "Police Officer", "Firefighter", "Translator", "Journalist", "Fitness Trainer", 
         "Interior Designer", "Real Estate Agent", "Veterinarian", "Astronaut"]
-# fmt: on
 
 
 @commands.cooldown(1, 300, commands.BucketType.user)
