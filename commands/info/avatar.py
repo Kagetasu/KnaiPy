@@ -1,18 +1,18 @@
+import discord
 from discord.ext import commands
-from discord import Embed
+
+from typing import Union
+
+from utils import Embed
+
 
 @commands.command()
-async def avatar(ctx: commands.Context, id: int=None):
-    if(ctx.message.mentions):
-        id = ctx.message.mentions[0].id
-    if(id == None):
-        id = ctx.author.id
-    member = ctx.guild.get_member(id)
-    if(member == None):
-        await ctx.reply("No member found")
-        return
-    embed = Embed(title=f"{member.name.title()}'s avatar:")
-    embed.set_image(url=member.display_avatar)
+async def avatar(
+    ctx: commands.Context,
+    user: Union[discord.Member, discord.User] = commands.Author,
+):
+    embed = Embed(title=f"{user.name}'s avatar:")
+    embed.set_image(url=user.display_avatar)
     await ctx.reply(embed=embed)
 
 

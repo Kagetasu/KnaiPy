@@ -1,31 +1,40 @@
+import discord
 from discord.ext import commands
-from discord import Embed, User
 
-from databases.economydb import view, update
+from utils import Embed, MoneyConverterType
 
-from utils import MoneyConverter
+from typing import TYPE_CHECKING, Union
 
-from typing import Annotated
+if TYPE_CHECKING:
+    from utils.economy import Database
+
 
 @commands.command()
-async def give(ctx: commands.Context, user: User, amnt:Annotated[int, MoneyConverter]):
+async def give(
+    ctx: commands.Context,
+    user: Union[discord.Member, discord.User],
+    amnt: MoneyConverterType,
+):
+    if user.id == ctx.author.id:
+        return await ctx.reply(f"Can't give money to yourself!")
 
-    if(user.id == ctx.author.id):
-        await ctx.reply(f"Transferred **${amnt}** from <@{user.id}> to <@{user.id}>")
-        return
-        
+    db: "Database" = ctx.bot.db
+    await db.update(ctx.author.id, "-", amnt)
+    await db.check_user(user.id)
+    await db.update(user.id, "+", amnt)
+
+    balance = db.get_balance(ctx.author.id)
+
     embed = Embed(
-        color=0xe8bf56,
+        color=0xE8BF56,
         title=f"{ctx.author.display_name}'s Transaction",
-        description=f"**Amount:** ${amnt}\n\n**Transferred to:** <@{user.id}>"
-        )
-    
+        description=f"**Amount:** ${amnt}\n\n**Transferred to:** <@{user.id}>",
+    )
+
     embed.set_thumbnail(url=ctx.author.display_avatar)
-    update(ctx.author.id, '-', amnt)
-    update(user.id, '+', amnt)
-    embed.set_footer(text=f"Current balance: ${view(ctx.author.id)[0]}")
+    embed.set_footer(text=f"Current balance: ${balance}")
     await ctx.reply(embed=embed)
-    
+
 
 async def setup(bot):
     bot.add_command(give)
