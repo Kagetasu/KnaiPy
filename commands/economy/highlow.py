@@ -1,5 +1,4 @@
-import discord
-from discord import ui, ButtonStyle
+from discord import ui, ButtonStyle, Interaction
 from discord.ext import commands
 
 from random import randrange, choice
@@ -37,7 +36,7 @@ class HighLowView(ui.View):
 
     async def logic(
         self,
-        itx: discord.Interaction,
+        itx: Interaction,
         answer: Literal["high", "low"],
     ) -> None:
         embed = self.embed  # alias
@@ -55,11 +54,11 @@ class HighLowView(ui.View):
         await itx.response.edit_message(embed=embed, view=self)
 
     @ui.button(emoji="⬆️", style=ButtonStyle.secondary)
-    async def high(self, itx: discord.Interaction, _: ui.Button):
+    async def high(self, itx: Interaction, _: ui.Button):
         await self.logic(itx, "high")
 
     @ui.button(emoji="⬇️", style=ButtonStyle.secondary)
-    async def low(self, itx: discord.Interaction, _: ui.Button):
+    async def low(self, itx: Interaction, _: ui.Button):
         await self.logic(itx, "low")
 
 
