@@ -27,7 +27,7 @@ class HighLowView(ui.View):
     def disable_buttons(self) -> None:
         for child in self.children:
             if isinstance(child, ui.Button):
-                if child.emoji == self.result:
+                if child.custom_id == self.result:
                     child.style = ButtonStyle.green
                 else:
                     child.style = ButtonStyle.red
@@ -39,7 +39,7 @@ class HighLowView(ui.View):
         itx: Interaction,
         answer: Literal["high", "low"],
     ) -> None:
-        embed = self.embed  # alias
+        embed = self.embed 
 
         if answer == self.result:
             win = randrange(1500, 3001)
@@ -51,13 +51,15 @@ class HighLowView(ui.View):
             embed.description = f"Incorrect!"
 
         embed.description += f"\n\nThe number was `{self.num}`"
+        self.disable_buttons()
         await itx.response.edit_message(embed=embed, view=self)
+        
 
-    @ui.button(emoji="⬆️", style=ButtonStyle.secondary)
+    @ui.button(emoji="⬆️", custom_id="high", style=ButtonStyle.secondary)
     async def high(self, itx: Interaction, _: ui.Button):
         await self.logic(itx, "high")
 
-    @ui.button(emoji="⬇️", style=ButtonStyle.secondary)
+    @ui.button(emoji="⬇️", custom_id="low", style=ButtonStyle.secondary)
     async def low(self, itx: Interaction, _: ui.Button):
         await self.logic(itx, "low")
 
