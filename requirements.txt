@@ -1,6 +1,4 @@
 discord.py==2.1.1
 <<<<<<< HEAD
 git+https://github.com/Rapptz/asqlite
-=======
-git+https://github.com/Rapptz/asqlite
->>>>>>> 17a1b712a1b761c036931e9ed25ca5d97b4ef372
+
