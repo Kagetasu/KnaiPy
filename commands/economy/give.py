@@ -28,11 +28,11 @@ async def give(
     embed = Embed(
         color=0xE8BF56,
         title=f"{ctx.author.display_name}'s Transaction",
-        description=f"**Amount:** ${amnt}\n\n**Transferred to:** <@{user.id}>"
+        description=f"**Amount:** ${amnt:,}\n\n**Transferred to:** <@{user.id}>"
         )
     
     embed.set_thumbnail(url=ctx.author.display_avatar)
-    embed.set_footer(text=f"Current balance: ${balance}")
+    embed.set_footer(text=f"Current balance: ${balance:,}")
     await ctx.reply(embed=embed)
     
 

@@ -223,7 +223,7 @@ class BlackJackView(ui.View):
                 embed.color = RED
 
             embed.description = result.message.replace("?", str(winperc))
-            embed.set_footer(text=f"Current balance: ${await self.db.get_balance(itx.user.id)}")
+            embed.set_footer(text=f"Current balance: ${await self.db.get_balance(itx.user.id):,}")
             await itx.response.edit_message(embed=embed, view=None)
             
 
@@ -255,7 +255,7 @@ class BlackJackView(ui.View):
             await self.db.update(itx.user.id, "+", win_amnt)
         
         embed.description = result.message.replace("?", str(winperc))
-        embed.set_footer(text=f"Current balance: ${await self.db.get_balance(itx.user.id)}")
+        embed.set_footer(text=f"Current balance: ${await self.db.get_balance(itx.user.id):,}")
         await itx.response.edit_message(embed=embed, view=None)
 
         
@@ -317,7 +317,7 @@ async def blackjack(
             await db.update(ctx.author.id, "+", win_amnt)
         
         embed.description = result.message.replace("?", str(winperc))
-        embed.set_footer(text=f"Current balance: ${await db.get_balance(ctx.author.id)}")
+        embed.set_footer(text=f"Current balance: ${await db.get_balance(ctx.author.id):,}")
 
         view.stop()
         await ctx.reply(embed=embed, view=None)

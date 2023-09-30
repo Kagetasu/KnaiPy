@@ -55,11 +55,11 @@ async def slots(ctx: commands.Context, amnt:MoneyConverterType):
         win = floor(uniform(0.3, 0.7)*amnt)
         if count == 2:
             win = win * multiplier
-            embed.description += f"Congrats! You won **${win}!!**"
+            embed.description += f"Congrats! You won **${win:,}!!**"
             embed.color = 0x32A852
         else:
             win = win * 4
-            embed.description += f"**JACKPOT!!!** You won **${win}!!**"
+            embed.description += f"**JACKPOT!!!** You won **${win:,}!!**"
             embed.color = 0xE8BF56
 
         await db.update(ctx.author.id, '+', amnt=win+amnt)
@@ -73,7 +73,7 @@ async def slots(ctx: commands.Context, amnt:MoneyConverterType):
 
 
     balance = await db.get_balance(ctx.author.id)
-    embed.set_footer(text=f"Current balance: ${balance}")
+    embed.set_footer(text=f"Current balance: ${balance:,}")
     await ctx.reply(embed = embed)
 
     

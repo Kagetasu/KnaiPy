@@ -25,10 +25,10 @@ async def work(ctx: commands.Context):
     embed = Embed(
         color=0xE8BF56,
         title=f"{ctx.author.display_name}'s Transaction:",
-        description=f"**Pay:** ${amnt}\n\n**Worked as:** {job}",
+        description=f"**Pay:** ${amnt:,}\n\n**Worked as:** {job}",
     )
     embed.set_thumbnail(url=ctx.author.display_avatar)
-    embed.set_footer(text=f"Current balance: ${balance}")
+    embed.set_footer(text=f"Current balance: ${balance:,}")
     await ctx.reply(embed=embed)
 
 

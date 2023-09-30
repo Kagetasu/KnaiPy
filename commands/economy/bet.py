@@ -19,7 +19,7 @@ async def bet(
 
     if random() >= 0.55:
         win = floor(uniform(0.3, 0.5) * amnt)
-        await ctx.send(f"Congrats! You won **${win}**!")
+        await ctx.send(f"Congrats! You won **${win:,}**!")
         await db.update(ctx.author.id, "+", win)
     else:
         await ctx.send("You lost 😝")

@@ -44,7 +44,7 @@ class HighLowView(ui.View):
         if answer == self.result:
             win = randrange(1500, 3001)
             embed.color = 0x32A852
-            embed.description = f"Correct! You won **${win}**!"
+            embed.description = f"Correct! You won **${win:,}**!"
             await self.ctx.bot.db.update(self.ctx.author.id, "+", win)
         else:
             embed.color = 0x9C1A36

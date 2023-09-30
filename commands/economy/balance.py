@@ -20,7 +20,7 @@ async def balance(
 
     embed = Embed(title=user.display_name)
     embed.set_thumbnail(url=user.display_avatar)
-    embed.description = f"**Balance:** ${bal}"
+    embed.description = f"**Balance:** ${bal:,}"
     
     await ctx.reply(embed=embed)
 
