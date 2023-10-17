@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.economy import Database
-
+    from utils.stats import Stats
 
 symbols = ['🍋', '🍋', '🍋', '🍋',
            '🍊', '🍊', '🍊', '🍊',
@@ -23,6 +23,8 @@ symbols = ['🍋', '🍋', '🍋', '🍋',
 @commands.command()
 async def slots(ctx: commands.Context, amnt:MoneyConverterType):
     db: "Database" = ctx.bot.db
+    stats: "Stats" = ctx.bot.stats
+
     await db.update(ctx.author.id, "-", amnt)
 
     symb = choices(symbols, k=3)
@@ -63,6 +65,7 @@ async def slots(ctx: commands.Context, amnt:MoneyConverterType):
             embed.color = 0xE8BF56
 
         await db.update(ctx.author.id, '+', amnt=win+amnt)
+        await stats.update_gambling(ctx.author.id, amnt, win, "win")
     else:  
         if(count == -1):
             embed.description += "You got **BOMBED!** R.I.P 💀"
@@ -70,6 +73,7 @@ async def slots(ctx: commands.Context, amnt:MoneyConverterType):
         else:
             embed.description += "  You lost..."
             embed.color = 0x9C1A36
+        await stats.update_gambling(ctx.author.id, amnt, amnt, "loss")
 
 
     balance = await db.get_balance(ctx.author.id)

@@ -13,6 +13,7 @@ from enum import Enum, auto
 
 if TYPE_CHECKING:
     from utils.economy import Database
+    from utils.stats import Stats
 
 SUITS = ['♠️', '♦️', '♣️', '♥️']
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'K', 'Q', 'A']
@@ -138,6 +139,7 @@ class BlackJackView(ui.View):
             player_deck: Deck,
             amnt: int,
             db: "Database",
+            stats: "Stats",
             **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -145,6 +147,7 @@ class BlackJackView(ui.View):
         self.amnt = amnt
         self.player_deck = player_deck
         self.db = db
+        self.stats = stats
         self.message: Optional[Message] = None
 
         self.opponent_deck = Deck(main_deck=main_deck)
@@ -213,18 +216,20 @@ class BlackJackView(ui.View):
         else:
             embed = self.create_embed(reveal_deck=True)
             
-
             if result == GameStatus.Win:
                 embed.color = GREEN
 
                 await self.db.update(itx.user.id, "+", win_amnt)
+                await self.stats.update_gambling(itx.user.id, self.amnt, win_amnt-self.amnt, "win")
                 
             else:
                 embed.color = RED
+                await self.stats.update_gambling(itx.user.id, self.amnt, self.amnt, "loss")
 
             embed.description = result.message.replace("?", str(winperc))
             embed.set_footer(text=f"Current balance: ${await self.db.get_balance(itx.user.id):,}")
             await itx.response.edit_message(embed=embed, view=None)
+            self.stop()
             
 
             
@@ -247,9 +252,11 @@ class BlackJackView(ui.View):
             embed.color = YELLOW
 
         elif result == GameStatus.Loss:
+            await self.stats.update_gambling(itx.user.id, self.amnt, self.amnt, "loss")
             embed.color = RED
 
         else:
+            await self.stats.update_gambling(itx.user.id, self.amnt, win_amnt-self.amnt, "win")
             embed.color = GREEN
 
             await self.db.update(itx.user.id, "+", win_amnt)
@@ -268,6 +275,7 @@ async def blackjack(
     amnt: MoneyConverterType
 ):
     db: "Database" = ctx.bot.db
+    stats: "Stats" = ctx.bot.stats
 
     await db.update(ctx.author.id, "-", amnt) # Locking the amount
 
@@ -290,7 +298,8 @@ async def blackjack(
             }
         ),
         amnt=amnt,
-        db=db
+        db=db,
+        stats=stats
     )
 
     embed = view.create_embed(
@@ -311,10 +320,12 @@ async def blackjack(
 
         elif result == GameStatus.Loss:
             embed.color = RED
+            await stats.update_gambling(ctx.author.id, amnt, amnt, "loss")
 
         else:
             embed.color = GREEN
             await db.update(ctx.author.id, "+", win_amnt)
+            await stats.update_gambling(ctx.author.id, amnt, win_amnt-amnt, "win")
         
         embed.description = result.message.replace("?", str(winperc))
         embed.set_footer(text=f"Current balance: ${await db.get_balance(ctx.author.id):,}")

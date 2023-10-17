@@ -6,7 +6,8 @@ from pathlib import Path
 from math import ceil
 from utils.economy import Database
 from utils.words import Words
-from config import token
+from utils.stats import Stats
+from config import TOKEN
 
 
 intents = discord.Intents.default()
@@ -24,6 +25,8 @@ async def setup_hook():
     await bot.db.create_tables()
     bot.words = Words()
     await bot.words.create_tables()
+    bot.stats = Stats()
+    await bot.stats.create_tables()
     
     CMDS_FOLDER = Path('./commands')
     for cmd in CMDS_FOLDER.glob("**/[!_]*.py"):
@@ -32,7 +35,7 @@ async def setup_hook():
 
 
 
-bot.run(token)
+bot.run(TOKEN)
 
 
 

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.economy import Database
+    from utils.stats import Stats
 
 
 class ScratchView(ui.View):
@@ -22,6 +23,7 @@ class ScratchView(ui.View):
             rewards: list[dict],
             amnt: int,
             db: "Database",
+            stats: "Stats",
             **kwargs
     ):
         self.user = user
@@ -29,6 +31,7 @@ class ScratchView(ui.View):
         self.rewards = rewards
         self.amnt = amnt
         self.db = db
+        self.stats = stats
 
         self.multi = 0.0
         self.tries = 5
@@ -37,7 +40,7 @@ class ScratchView(ui.View):
         super().__init__(*args, **kwargs)
 
         for row in range(5):
-            for col in range(5):
+            for _ in range(5):
                 b = ui.Button(label="\u2800", style=ButtonStyle.gray, row=row)
                 b.callback = self.generic_callback(b)
                 self.add_item(b)
@@ -76,9 +79,11 @@ class ScratchView(ui.View):
                 embed.set_footer(text=f"Current balance: ${await self.db.get_balance(self.user.id):,}")
 
                 if win < self.amnt:
+                    await self.stats.update_gambling(itx.user.id, self.amnt, self.amnt-win, "loss")
                     embed.color = RED
                     embed.description += f"\n\nYou were only able to get **${win:,}** back :<"
                 elif win > self.amnt:
+                    await self.stats.update_gambling(itx.user.id, self.amnt, win-self.amnt, "win")
                     embed.color = GREEN
                     embed.description += f"\n\nYou won **${win:,}**!"
                 else:
@@ -113,7 +118,7 @@ class ScratchView(ui.View):
 @commands.command()
 async def scratch(ctx: commands.Context, amnt: MoneyConverterType):
     db: "Database" = ctx.bot.db
-
+    stats: "Stats" = ctx.bot.stats
     await db.update(ctx.author.id, "-", amnt)
 
     rewards = (
@@ -125,7 +130,7 @@ async def scratch(ctx: commands.Context, amnt: MoneyConverterType):
     )
     shuffle(rewards)
 
-    view = ScratchView(user=ctx.author, message=ctx.message, rewards=rewards, amnt=amnt, db=db)
+    view = ScratchView(user=ctx.author, message=ctx.message, rewards=rewards, amnt=amnt, db=db, stats=stats)
 
     await ctx.reply(embed=view.create_embed(), view=view)
 
